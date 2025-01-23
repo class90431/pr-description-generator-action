@@ -2,7 +2,7 @@ name: Auto Generate PR Description
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, edited, synchronize]
 
 jobs:
   generate-description:
