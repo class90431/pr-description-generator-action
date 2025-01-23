@@ -10,7 +10,7 @@ const openai = new OpenAI({
 });
 
 // 初始化 GitHub API
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+const octokit = new Octokit({ auth: process.env.MY_GITHUB_TOKEN });
 
 // 自動生成 PR 描述
 async function generatePRDescription(owner, repo, pullNumber) {
