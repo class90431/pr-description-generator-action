@@ -108,6 +108,8 @@ if (!owner || !repo || !pullNumber) {
   process.exit(1);
 }
 
+console.log('======', owner, repo, pullNumber)
+
 // 生成 PR 描述
 generatePRDescription(owner, repo, pullNumber);
 
