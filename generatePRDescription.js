@@ -27,6 +27,16 @@ async function generatePRDescription(owner, repo, pullNumber) {
       pull_number: pullNumber,
     });
 
+    // 獲取 PR 的 code diff
+    const { data: diff } = await octokit.request(`GET /repos/{owner}/{repo}/pulls/{pull_number}`, {
+      owner,
+      repo,
+      pull_number: pullNumber,
+      headers: {
+        accept: 'application/vnd.github.v3.diff', // 或 'application/vnd.github.v3.patch'
+      },
+    });
+
     // 提取提交訊息和文件變更
     const commitMessages = commits
       .map((commit) => `- ${commit.commit.message}`)
@@ -37,6 +47,7 @@ async function generatePRDescription(owner, repo, pullNumber) {
 
     console.log('Commit messages:', commitMessages);
     console.log('File changes:', fileChanges);
+    console.log('Code diff:', diff); // 如果需要，這裡可以查看 diff 資料
 
     // 準備提示文字給 OpenAI
     const template = `
@@ -61,6 +72,9 @@ ${commitMessages}
 
 File changes:
 ${fileChanges}
+
+Code diff:
+${diff}
 
 Format the description with the following template:
 ${template}
@@ -108,8 +122,5 @@ if (!owner || !repo || !pullNumber) {
   process.exit(1);
 }
 
-console.log('======', owner, repo, pullNumber)
-
 // 生成 PR 描述
 generatePRDescription(owner, repo, pullNumber);
-
