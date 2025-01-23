@@ -10,11 +10,18 @@ const openai = new OpenAI({
 });
 
 // 初始化 GitHub API
-const octokit = new Octokit({ auth: process.env.MY_GITHUB_TOKEN });
+const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
 // 自動生成 PR 描述
-async function generatePRDescription(owner, repo, pullNumber) {
+async function generatePRDescription(owner, repo, pullNumber, branchName) {
   try {
+    // 提取 Jira 票號 (支持 CDB-xxxx 和 DBP-xxxx)
+    const jiraTicketMatch = branchName.match(/(CDB|DBP)-\d+/);
+    const jiraTicket = jiraTicketMatch ? jiraTicketMatch[0] : 'CDB-0000';
+
+    // 構建 Jira Ticket 的 URL
+    const jiraURL = `https://botrista-sw.atlassian.net/browse/${jiraTicket}`;
+
     // 獲取 PR 的提交和變更資訊
     const { data: commits } = await octokit.rest.pulls.listCommits({
       owner,
@@ -27,16 +34,6 @@ async function generatePRDescription(owner, repo, pullNumber) {
       pull_number: pullNumber,
     });
 
-    // 獲取 PR 的 code diff
-    const { data: diff } = await octokit.request(`GET /repos/{owner}/{repo}/pulls/{pull_number}`, {
-      owner,
-      repo,
-      pull_number: pullNumber,
-      headers: {
-        accept: 'application/vnd.github.v3.diff', // 或 'application/vnd.github.v3.patch'
-      },
-    });
-
     // 提取提交訊息和文件變更
     const commitMessages = commits
       .map((commit) => `- ${commit.commit.message}`)
@@ -47,7 +44,6 @@ async function generatePRDescription(owner, repo, pullNumber) {
 
     console.log('Commit messages:', commitMessages);
     console.log('File changes:', fileChanges);
-    console.log('Code diff:', diff); // 如果需要，這裡可以查看 diff 資料
 
     // 準備提示文字給 OpenAI
     const template = `
@@ -61,7 +57,7 @@ async function generatePRDescription(owner, repo, pullNumber) {
 <!-- Replace this line to explain how to test -->
 
 ## Ticket
-[CDB-0000](https://botrista-sw.atlassian.net/browse/CDB-0000)
+[${jiraTicket}](${jiraURL})
     `;
 
     const prompt = `
@@ -72,9 +68,6 @@ ${commitMessages}
 
 File changes:
 ${fileChanges}
-
-Code diff:
-${diff}
 
 Format the description with the following template:
 ${template}
@@ -108,19 +101,23 @@ ${template}
 
     console.log('PR description updated successfully!');
   } catch (error) {
-    // 輸出錯誤訊息
     console.error('Error generating PR description:', error.message);
   }
 }
 
 // 從 GitHub Actions 中獲取輸入參數
-const [owner, repo, pullNumber] = process.argv.slice(2);
+const [owner, repo, pullNumber, branchName] = process.argv.slice(2);
 
 // 驗證參數是否完整
-if (!owner || !repo || !pullNumber) {
-  console.error('Error: Missing required parameters: owner, repo, pull_number');
+if (!owner || !repo || !pullNumber || !branchName) {
+  console.error('Error: Missing required parameters: owner, repo, pull_number, branch_name');
   process.exit(1);
 }
 
+console.log('Owner:', owner);
+console.log('Repository:', repo);
+console.log('Pull Request Number:', pullNumber);
+console.log('Branch Name:', branchName);
+
 // 生成 PR 描述
-generatePRDescription(owner, repo, pullNumber);
+generatePRDescription(owner, repo, pullNumber, branchName);
