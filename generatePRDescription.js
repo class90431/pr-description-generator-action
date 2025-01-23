@@ -94,6 +94,7 @@ ${template}
 
     console.log('PR description updated successfully!');
   } catch (error) {
+    // 輸出錯誤訊息
     console.error('Error generating PR description:', error.message);
   }
 }
