@@ -1,8 +1,20 @@
 name: Auto Generate PR Description
 
 on:
-  pull_request:
-    types: [opened, synchronize]
+  workflow_call:
+    inputs:
+      repository_owner:
+        required: true
+        type: string
+      repository_name:
+        required: true
+        type: string
+      pull_request_number:
+        required: true
+        type: number
+      branch_name:
+        required: true
+        type: string
 
 jobs:
   generate-description:
@@ -24,4 +36,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: node generatePRDescription.js ${{ github.repository_owner }} ${{ github.event.repository.name }} ${{ github.event.pull_request.number }} ${{ github.event.pull_request.head.ref }}
+        run: node generatePRDescription.js ${{ inputs.repository_owner }} ${{ inputs.repository_name }} ${{ inputs.pull_request_number }} ${{ inputs.branch_name }}
