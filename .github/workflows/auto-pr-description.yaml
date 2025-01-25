@@ -33,6 +33,7 @@ jobs:
         with:
           repository: class90431/pr-description-generator
           ref: main
+          token: ${{ secrets.MY_GITHUB_TOKEN }}
 
       # 設置 Node.js 環境
       - name: Set up Node.js
