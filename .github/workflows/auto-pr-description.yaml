@@ -48,4 +48,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: node generatePRDescription.js ${{ inputs.repository_owner }} ${{ inputs.repository_name }} ${{ inputs.pull_request_number }} ${{ inputs.branch_name
+        run: node generatePRDescription.js ${{ inputs.repository_owner }} ${{ inputs.repository_name }} ${{ inputs.pull_request_number }} ${{ inputs.branch_name }}
