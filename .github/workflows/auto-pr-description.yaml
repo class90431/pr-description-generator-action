@@ -21,8 +21,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout the pr-description-generator repo
         uses: actions/checkout@v3
+        with:
+          repository: class90431/pr-description-generator
+          token: ${{ secrets.MY_GITHUB_TOKEN }}
+          ref: main
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
