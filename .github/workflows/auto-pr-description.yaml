@@ -21,6 +21,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Debug inputs
+        run: |
+          echo "repository_owner: ${{ inputs.repository_owner }}"
+          echo "repository_name: ${{ inputs.repository_name }}"
+          echo "pull_request_number: ${{ inputs.pull_request_number }}"
+          echo "branch_name: ${{ inputs.branch_name }}"
       # 檢出目標 Repo
       - name: Checkout the pr-description-generator repo
         uses: actions/checkout@v3
