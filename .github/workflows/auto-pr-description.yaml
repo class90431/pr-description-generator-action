@@ -29,11 +29,11 @@ jobs:
           echo "branch_name: ${{ inputs.branch_name }}"
       # 檢出目標 Repo
       - name: Checkout the pr-description-generator repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: class90431/pr-description-generator
           ref: main
-          token: ${{ secrets.MY_GITHUB_TOKEN }}
+          token: ${{ github.token }}
 
       # 設置 Node.js 環境
       - name: Set up Node.js
