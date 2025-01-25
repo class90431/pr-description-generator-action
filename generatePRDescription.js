@@ -119,6 +119,7 @@ ${template}
     console.log('PR description updated successfully!')
   } catch (error) {
     console.error('Error generating PR description:', error.message)
+    process.exit(1)
   }
 }
 
