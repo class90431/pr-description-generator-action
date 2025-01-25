@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 檢出目標 Repo
       - name: Checkout the pr-description-generator repo
         uses: actions/checkout@v3
         with:
@@ -28,16 +29,23 @@ jobs:
           token: ${{ secrets.MY_GITHUB_TOKEN }}
           ref: main
 
+      # 設置 Node.js 環境
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
 
+      # 安裝依賴
       - name: Install dependencies
         run: npm install
 
+      # Debug: 檢查檔案目錄
+      - name: Debug files
+        run: ls -R
+
+      # 執行 generatePRDescription.js
       - name: Generate PR description
         env:
           GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: node generatePRDescription.js ${{ inputs.repository_owner }} ${{ inputs.repository_name }} ${{ inputs.pull_request_number }} ${{ inputs.branch_name }}
+        run: node generatePRDescription.js ${{ inputs.repository_owner }} ${{ inputs.repository_name }} ${{ inputs.pull_request_number }} ${{ inputs.branch_name
