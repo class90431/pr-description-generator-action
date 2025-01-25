@@ -23,4 +23,4 @@ jobs:
         env:
           MY_GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: node generatePRDescription.js ${{ github.event.pull_request.owner.login }} ${{ github.event.pull_request.repo.name }} ${{ github.event.pull_request.number }} ${{ github.event.pull_request.head.ref }}
+        run: node generatePRDescription.js "${{ github.event.pull_request.user.login }}" "${{ github.event.pull_request.head.repo.name }}" "${{ github.event.pull_request.number }}" "${{ github.event.pull_request.head.ref }}"
