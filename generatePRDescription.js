@@ -4,7 +4,6 @@ dotenv.config()
 import { Octokit } from 'octokit'
 import OpenAI from 'openai'
 
-
 console.log('======', process.env.MY_GITHUB_TOKEN)
 console.log('======', process.env.OPENAI_API_KEY)
 
