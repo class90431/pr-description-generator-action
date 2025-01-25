@@ -10,7 +10,7 @@ const openai = new OpenAI({
 })
 
 // init GitHub API
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
+const octokit = new Octokit({ auth: process.env.MY_GITHUB_TOKEN })
 
 // auto generate PR description
 async function generatePRDescription(owner, repo, pullNumber, branchName) {
