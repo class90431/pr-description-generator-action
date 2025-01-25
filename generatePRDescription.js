@@ -4,10 +4,16 @@ dotenv.config()
 import { Octokit } from 'octokit'
 import OpenAI from 'openai'
 
+
+console.log('======', process.env.MY_GITHUB_TOKEN)
+console.log('======', process.env.OPENAI_API_KEY)
+
 // init OpenAIApi
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 })
+
+console.log('=== openai ===', openai)
 
 // init GitHub API
 const octokit = new Octokit({ auth: process.env.MY_GITHUB_TOKEN })
