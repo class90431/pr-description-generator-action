@@ -1,0 +1,31 @@
+name: 'Auto Generate PR Description'
+description: 'Generate PR descriptions using OpenAI API'
+author: 'your-username'
+
+inputs:
+  repository_owner:
+    required: true
+    type: string
+  repository_name:
+    required: true
+    type: string
+  pull_request_number:
+    required: true
+    type: string
+  branch_name:
+    required: true
+    type: string
+
+secrets:
+  OPENAI_API_KEY:
+    required: true
+  GITHUB_TOKEN:
+    required: true
+
+runs:
+  using: 'node20'
+  main: 'generatePRDescription.js'
+
+branding:
+  icon: 'message-circle'
+  color: 'blue'
