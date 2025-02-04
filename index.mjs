@@ -1,18 +1,32 @@
-import dotenv from 'dotenv'
-dotenv.config()
-
 import { Octokit } from 'octokit'
 import OpenAI from 'openai'
 
-// init OpenAIApi
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-})
+// Read inputs from GitHub Actions
+const owner = process.env.INPUT_REPOSITORY_OWNER
+const repo = process.env.INPUT_REPOSITORY_NAME
+const pullNumber = process.env.INPUT_PULL_REQUEST_NUMBER
+const branchName = process.env.INPUT_BRANCH_NAME
 
-// init GitHub API
-const octokit = new Octokit({ auth: process.env.MY_GITHUB_TOKEN })
+// Read secrets
+const openaiApiKey = process.env.OPENAI_API_KEY
+const githubToken = process.env.GITHUB_TOKEN
 
-// auto generate PR description
+// Check if secrets exist
+if (!openaiApiKey || !githubToken) {
+  console.error('Missing required secrets: OPENAI_API_KEY or GITHUB_TOKEN')
+  process.exit(1)
+}
+
+// Initialize OpenAI
+const openai = new OpenAI({ apiKey: openaiApiKey })
+
+// Initialize GitHub API
+const octokit = new Octokit({ auth: githubToken })
+
+console.log(
+  `Generating PR description for ${owner}/${repo}#${pullNumber}/${branchName}`
+)
+
 async function generatePRDescription(owner, repo, pullNumber, branchName) {
   try {
     // Get Jira Ticket (Support CDB-xxxx and DBP-xxxx)
@@ -42,7 +56,7 @@ async function generatePRDescription(owner, repo, pullNumber, branchName) {
         repo,
         pull_number: pullNumber,
         headers: {
-          accept: 'application/vnd.github.v3.diff' // 或 'application/vnd.github.v3.patch'
+          accept: 'application/vnd.github.v3.diff'
         }
       }
     )
@@ -119,18 +133,9 @@ ${template}
     console.log('PR description updated successfully!')
   } catch (error) {
     console.error('Error generating PR description:', error.message)
+    console.error('Error:', error)
+    process.exit(1)
   }
-}
-
-// Get input parameters from GitHub Actions
-const [owner, repo, pullNumber, branchName] = process.argv.slice(2)
-
-// Validate input parameters
-if (!owner || !repo || !pullNumber || !branchName) {
-  console.error(
-    'Error: Missing required parameters: owner, repo, pull_number, branch_name'
-  )
-  process.exit(1)
 }
 
 generatePRDescription(owner, repo, pullNumber, branchName)

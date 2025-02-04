@@ -1,0 +1,25 @@
+name: 'Generate PR Description Action'
+description: 'Generate PR descriptions using OpenAI API'
+author: 'class90431'
+
+inputs:
+  repository_owner:
+    required: true
+    type: string
+  repository_name:
+    required: true
+    type: string
+  pull_request_number:
+    required: true
+    type: string
+  branch_name:
+    required: true
+    type: string
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
+
+branding:
+  icon: 'message-circle'
+  color: 'blue'
