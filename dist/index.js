@@ -19723,12 +19723,20 @@ ${template}
       ],
       max_tokens: 4096
     });
-    const prDescription = response.choices[0].message.content.trim();
+    const { data: pr2 } = await octokit.rest.pulls.get({
+      owner: owner2,
+      repo: repo2,
+      pull_number: pullNumber2
+    });
+    const existingDescription = pr2.body ? pr2.body.trim() : "";
+    const newPrDescription = response.choices[0].message.content.trim();
+    const separator = "\n\n---\n\n";
+    const finalDescription = existingDescription ? `${existingDescription}${separator}${newPrDescription}` : newPrDescription;
     await octokit.rest.pulls.update({
       owner: owner2,
       repo: repo2,
       pull_number: pullNumber2,
-      body: prDescription
+      body: finalDescription
     });
     console.log("PR description updated successfully!");
   } catch (error) {

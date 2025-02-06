@@ -120,14 +120,29 @@ ${template}
       max_tokens: 4096
     })
 
-    const prDescription = response.choices[0].message.content.trim()
+    // Get PR details (including current description)
+    const { data: pr } = await octokit.rest.pulls.get({
+      owner,
+      repo,
+      pull_number: pullNumber
+    })
+
+    const existingDescription = pr.body ? pr.body.trim() : ''
+
+    const newPrDescription = response.choices[0].message.content.trim()
+
+    // If PR already has content, append the new content with a separator
+    const separator = '\n\n---\n\n'
+    const finalDescription = existingDescription
+      ? `${existingDescription}${separator}${newPrDescription}`
+      : newPrDescription
 
     // Update PR description
     await octokit.rest.pulls.update({
       owner,
       repo,
       pull_number: pullNumber,
-      body: prDescription
+      body: finalDescription
     })
 
     console.log('PR description updated successfully!')
