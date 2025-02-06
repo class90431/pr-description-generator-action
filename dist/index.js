@@ -19648,39 +19648,40 @@ if (!openaiApiKey || !githubToken) {
 var openai = new openai_default({ apiKey: openaiApiKey });
 var octokit = new Octokit2({ auth: githubToken });
 console.log(
-  `Generating PR description for ${owner}/${repo}#${pullNumber}/${branchName}`
+  `Generating PR description for ${owner}/${repo}#${pullNumber} (${branchName})`
 );
 async function generatePRDescription(owner2, repo2, pullNumber2, branchName2) {
   try {
     const jiraTicketMatch = branchName2.match(/(CDB|DBP)-\d+/);
     const jiraTicket = jiraTicketMatch ? jiraTicketMatch[0] : "CDB-0000";
     const jiraURL = `https://botrista-sw.atlassian.net/browse/${jiraTicket}`;
-    const { data: commits } = await octokit.rest.pulls.listCommits({
-      owner: owner2,
-      repo: repo2,
-      pull_number: pullNumber2
-    });
-    const { data: files } = await octokit.rest.pulls.listFiles({
-      owner: owner2,
-      repo: repo2,
-      pull_number: pullNumber2
-    });
-    const { data: diff } = await octokit.request(
-      `GET /repos/{owner}/{repo}/pulls/{pull_number}`,
-      {
+    const [{ data: commits }, { data: files }, { data: pr2 }] = await Promise.all([
+      octokit.rest.pulls.listCommits({
         owner: owner2,
         repo: repo2,
-        pull_number: pullNumber2,
-        headers: {
-          accept: "application/vnd.github.v3.diff"
+        pull_number: pullNumber2
+      }),
+      octokit.rest.pulls.listFiles({ owner: owner2, repo: repo2, pull_number: pullNumber2 }),
+      octokit.rest.pulls.get({ owner: owner2, repo: repo2, pull_number: pullNumber2 })
+    ]);
+    const commitMessages = commits.map((c2) => `- ${c2.commit.message}`).join("\n");
+    const fileChanges = files.map((f2) => `- ${f2.filename} (${f2.status})`).join("\n");
+    let diff = "";
+    try {
+      const { data: rawDiff } = await octokit.request(
+        `GET /repos/{owner}/{repo}/pulls/{pull_number}`,
+        {
+          owner: owner2,
+          repo: repo2,
+          pull_number: pullNumber2,
+          headers: { accept: "application/vnd.github.v3.diff" }
         }
-      }
-    );
-    const commitMessages = commits.map((commit) => `- ${commit.commit.message}`).join("\n");
-    const fileChanges = files.map((file) => `- ${file.filename} (${file.status})`).join("\n");
-    console.log("Commit messages:", commitMessages);
-    console.log("File changes:", fileChanges);
-    console.log("Code diff:", diff);
+      );
+      diff = rawDiff.length > 2e4 ? rawDiff.slice(0, 2e4) + "\n\n[Diff truncated]" : rawDiff;
+    } catch (err) {
+      console.warn("Warning: Unable to fetch diff, proceeding without it.");
+    }
+    const existingDescription = pr2.body ? pr2.body.trim() : "";
     const template = `
 ## Description
 <!-- Replace this line to describe what this PR does -->
@@ -19697,16 +19698,19 @@ async function generatePRDescription(owner2, repo2, pullNumber2, branchName2) {
     const prompt = `
 Generate a GitHub pull request description based on the following details:
 
+Existing PR description:
+${existingDescription || "(No existing description)"}
+
 Commit messages:
 ${commitMessages}
 
 File changes:
 ${fileChanges}
 
-Code diff:
+Code diff (truncated if too long):
 ${diff}
 
-Format the description with the following template:
+Format the description using this template:
 ${template}
     `;
     const response = await openai.chat.completions.create({
@@ -19716,24 +19720,26 @@ ${template}
           role: "system",
           content: "You are a helpful assistant for generating PR descriptions."
         },
-        {
-          role: "user",
-          content: prompt
-        }
+        { role: "user", content: prompt }
       ],
       max_tokens: 4096
     });
-    const prDescription = response.choices[0].message.content.trim();
+    const newPrDescription = response.choices[0]?.message?.content?.trim() || "";
+    if (!newPrDescription) {
+      console.error("Error: OpenAI returned an empty response.");
+      process.exit(1);
+    }
+    const separator = "\n\n---\n\n";
+    const finalDescription = existingDescription ? `${existingDescription}${separator}${newPrDescription}` : newPrDescription;
     await octokit.rest.pulls.update({
       owner: owner2,
       repo: repo2,
       pull_number: pullNumber2,
-      body: prDescription
+      body: finalDescription
     });
     console.log("PR description updated successfully!");
   } catch (error) {
     console.error("Error generating PR description:", error.message);
-    console.error("Error:", error);
     process.exit(1);
   }
 }
