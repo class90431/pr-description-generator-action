@@ -19664,6 +19664,11 @@ async function generatePRDescription(owner2, repo2, pullNumber2, branchName2) {
       octokit.rest.pulls.listFiles({ owner: owner2, repo: repo2, pull_number: pullNumber2 }),
       octokit.rest.pulls.get({ owner: owner2, repo: repo2, pull_number: pullNumber2 })
     ]);
+    const existingDescription = pr2.body ? pr2.body.trim() : "";
+    if (existingDescription.includes("<!-- [gen-skip] -->")) {
+      console.log("PR description already generated, skipping...");
+      return;
+    }
     const commitMessages = commits.map((c2) => `- ${c2.commit.message}`).join("\n");
     const fileChanges = files.map((f2) => `- ${f2.filename} (${f2.status})`).join("\n");
     let diff = "";
@@ -19681,7 +19686,6 @@ async function generatePRDescription(owner2, repo2, pullNumber2, branchName2) {
     } catch (err) {
       console.warn("Warning: Unable to fetch diff, proceeding without it.");
     }
-    const existingDescription = pr2.body ? pr2.body.trim() : "";
     const template = `
 ## Description
 <!-- Replace this line to describe what this PR does -->
