@@ -45,6 +45,14 @@ async function generatePRDescription(owner, repo, pullNumber, branchName) {
         octokit.rest.pulls.listFiles({ owner, repo, pull_number: pullNumber }),
         octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber })
       ])
+    // Get existing PR description
+    const existingDescription = pr.body ? pr.body.trim() : ''
+
+    if (existingDescription.includes('<!-- [gen-skip] -->')) {
+      console.log('PR description already generated, skipping...')
+      return
+    }
+
 
     // Extract commit messages and file changes
     const commitMessages = commits
@@ -73,9 +81,6 @@ async function generatePRDescription(owner, repo, pullNumber, branchName) {
     } catch (err) {
       console.warn('Warning: Unable to fetch diff, proceeding without it.')
     }
-
-    // Get existing PR description
-    const existingDescription = pr.body ? pr.body.trim() : ''
 
     // Define PR template
     const template = `
