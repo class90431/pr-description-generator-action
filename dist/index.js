@@ -19653,8 +19653,8 @@ console.log(
 async function generatePRDescription(owner2, repo2, pullNumber2, branchName2) {
   try {
     const jiraTicketMatch = branchName2.match(/(CDB|DBP)-\d+/);
-    const jiraTicket = jiraTicketMatch ? jiraTicketMatch[0] : "CDB-0000";
-    const jiraURL = `https://botrista-sw.atlassian.net/browse/${jiraTicket}`;
+    const jiraTicket = jiraTicketMatch ? jiraTicketMatch[0] : null;
+    const jiraURL = jiraTicket ? `https://botrista-sw.atlassian.net/browse/${jiraTicket}` : null;
     const [{ data: commits }, { data: files }, { data: pr2 }] = await Promise.all([
       octokit.rest.pulls.listCommits({
         owner: owner2,
@@ -19686,7 +19686,7 @@ async function generatePRDescription(owner2, repo2, pullNumber2, branchName2) {
     } catch (err) {
       console.warn("Warning: Unable to fetch diff, proceeding without it.");
     }
-    const template = `
+    let template = `
 ## Description
 <!-- Replace this line to describe what this PR does -->
 
@@ -19695,10 +19695,16 @@ async function generatePRDescription(owner2, repo2, pullNumber2, branchName2) {
 
 ## Test
 <!-- Replace this line to explain how to test -->
-
+`;
+    if (jiraTicket) {
+      template += `
 ## Ticket
 [${jiraTicket}](${jiraURL})
     `;
+    }
+    const hasDescription = existingDescription.includes("## Description");
+    const hasChanges = existingDescription.includes("## Changes");
+    const hasTest = existingDescription.includes("## Test");
     const prompt = `
 Generate a GitHub pull request description based on the following details:
 
@@ -19716,13 +19722,18 @@ ${diff}
 
 Format the description using this template:
 ${template}
+
+IMPORTANT INSTRUCTIONS:
+${hasChanges ? "- The existing PR description already has a ## Changes section. Add your new changes as bullet points under the existing ## Changes section instead of creating a new one." : ""}
+${hasDescription ? "- Keep the existing ## Description section and enhance it if needed." : ""}
+${hasTest ? "- Keep the existing ## Test section and enhance it if needed." : ""}
     `;
     const response = await openai.chat.completions.create({
-      model: "gpt-4-turbo",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant for generating PR descriptions."
+          content: "You are a helpful assistant for generating PR descriptions. If the PR already has sections, enhance them instead of creating new ones."
         },
         { role: "user", content: prompt }
       ],
@@ -19733,8 +19744,13 @@ ${template}
       console.error("Error: OpenAI returned an empty response.");
       process.exit(1);
     }
-    const separator = "\n\n---\n\n";
-    const finalDescription = existingDescription ? `${existingDescription}${separator}${newPrDescription}` : newPrDescription;
+    let finalDescription = newPrDescription;
+    if (existingDescription && (hasDescription || hasChanges || hasTest)) {
+      finalDescription = newPrDescription;
+    } else if (existingDescription) {
+      const separator = "\n\n---\n\n";
+      finalDescription = `${existingDescription}${separator}${newPrDescription}`;
+    }
     await octokit.rest.pulls.update({
       owner: owner2,
       repo: repo2,
