@@ -53,7 +53,6 @@ async function generatePRDescription(owner, repo, pullNumber, branchName) {
       return
     }
 
-
     // Extract commit messages and file changes
     const commitMessages = commits
       .map((c) => `- ${c.commit.message}`)
@@ -82,31 +81,67 @@ async function generatePRDescription(owner, repo, pullNumber, branchName) {
       console.warn('Warning: Unable to fetch diff, proceeding without it.')
     }
 
-    // Define PR template
+    // Check if existing description already has sections
+    const hasDescription = existingDescription.includes('## Description')
+    const hasChanges = existingDescription.includes('## Changes')
+    const hasTest = existingDescription.includes('## Test')
+    const hasApi = existingDescription.includes('## API')
+
+    // Check if API changes are likely present in the code
+    const hasApiChanges = files.some(f => {
+      // Check if file is likely to contain API definitions
+      const isApiFile = f.filename.includes('api') || 
+                        f.filename.includes('route') || 
+                        f.filename.includes('controller') ||
+                        f.filename.includes('endpoint');
+      
+      // Check if diff contains API-related keywords
+      const containsApiKeywords = diff.includes('app.get(') || 
+                                 diff.includes('app.post(') || 
+                                 diff.includes('app.put(') || 
+                                 diff.includes('app.delete(') ||
+                                 diff.includes('router.get(') ||
+                                 diff.includes('router.post(') ||
+                                 diff.includes('router.put(') ||
+                                 diff.includes('router.delete(') ||
+                                 diff.includes('@api') ||
+                                 diff.includes('fetch(') ||
+                                 diff.includes('axios.');
+      
+      return isApiFile || containsApiKeywords;
+    });
+
+    // Define base template
     let template = `
 ## Description
 <!-- Replace this line to describe what this PR does -->
 
 ## Changes
 <!-- Replace this line to list changes -->
+`;
 
-## Test
+    // Add API section if needed
+    if (hasApi || hasApiChanges) {
+      template += `
+## API
+- [GET] XXXXXXX
+
+`;
+    }
+
+    // Add Test section
+    template += `## Test
 <!-- Replace this line to explain how to test -->
-`
+`;
 
     // Only add Ticket section if a Jira ticket was found
     if (jiraTicket) {
       template += `
 ## Ticket
 [${jiraTicket}](${jiraURL})
-    `
+    `;
     }
 
-    // Check if existing description already has sections
-    const hasDescription = existingDescription.includes('## Description')
-    const hasChanges = existingDescription.includes('## Changes')
-    const hasTest = existingDescription.includes('## Test')
-    
     // Prepare OpenAI prompt
     const prompt = `
 Generate a GitHub pull request description based on the following details:
@@ -130,6 +165,9 @@ IMPORTANT INSTRUCTIONS:
 ${hasChanges ? '- The existing PR description already has a ## Changes section. Add your new changes as bullet points under the existing ## Changes section instead of creating a new one.' : ''}
 ${hasDescription ? '- Keep the existing ## Description section and enhance it if needed.' : ''}
 ${hasTest ? '- Keep the existing ## Test section and enhance it if needed.' : ''}
+${hasApi ? '- Keep the existing ## API section and enhance it if needed.' : ''}
+${!hasApi && hasApiChanges ? '- Include the ## API section with details about API changes, following the format [METHOD] endpoint.' : ''}
+${!hasApi && !hasApiChanges ? '- Remove the ## API section completely if there are no API changes.' : ''}
     `
 
     // Generate PR description with OpenAI
@@ -157,7 +195,7 @@ ${hasTest ? '- Keep the existing ## Test section and enhance it if needed.' : ''
     
     // If there's an existing description and it contains sections,
     // we need to intelligently merge rather than just append
-    if (existingDescription && (hasDescription || hasChanges || hasTest)) {
+    if (existingDescription && (hasDescription || hasChanges || hasTest || hasApi)) {
       // Use the new description directly as it should have incorporated
       // the existing content based on our instructions to the model
       finalDescription = newPrDescription
