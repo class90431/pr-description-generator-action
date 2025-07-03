@@ -86,6 +86,32 @@ async function generatePRDescription(owner, repo, pullNumber, branchName) {
     const hasChanges = existingDescription.includes('## Changes')
     const hasTest = existingDescription.includes('## Test')
     const hasApi = existingDescription.includes('## API')
+    
+    // Extract existing content from sections if they exist
+    let existingDescriptionContent = ''
+    let existingChangesContent = ''
+    let existingTestContent = ''
+    let existingApiContent = ''
+    
+    if (hasDescription) {
+      const descriptionMatch = existingDescription.match(/## Description\s*([\s\S]*?)(?=##|$)/)
+      existingDescriptionContent = descriptionMatch ? descriptionMatch[1].trim() : ''
+    }
+    
+    if (hasChanges) {
+      const changesMatch = existingDescription.match(/## Changes\s*([\s\S]*?)(?=##|$)/)
+      existingChangesContent = changesMatch ? changesMatch[1].trim() : ''
+    }
+    
+    if (hasTest) {
+      const testMatch = existingDescription.match(/## Test\s*([\s\S]*?)(?=##|$)/)
+      existingTestContent = testMatch ? testMatch[1].trim() : ''
+    }
+    
+    if (hasApi) {
+      const apiMatch = existingDescription.match(/## API\s*([\s\S]*?)(?=##|$)/)
+      existingApiContent = apiMatch ? apiMatch[1].trim() : ''
+    }
 
     // Check if API changes are likely present in the code
     const hasApiChanges = files.some(f => {
@@ -111,27 +137,27 @@ async function generatePRDescription(owner, repo, pullNumber, branchName) {
       return isApiFile || containsApiKeywords;
     });
 
-    // Define base template
+    // Define base template with existing content if available
     let template = `
 ## Description
-<!-- Replace this line to describe what this PR does -->
+${existingDescriptionContent || '<!-- Replace this line to describe what this PR does -->'}
 
 ## Changes
-<!-- Replace this line to list changes -->
+${existingChangesContent || '<!-- Replace this line to list changes -->'}
 `;
 
     // Add API section if needed
     if (hasApi || hasApiChanges) {
       template += `
 ## API
-- [GET] XXXXXXX
+${existingApiContent || '- [GET] XXXXXXX'}
 
 `;
     }
 
     // Add Test section
     template += `## Test
-<!-- Replace this line to explain how to test -->
+${existingTestContent || '<!-- Replace this line to explain how to test -->'}
 `;
 
     // Only add Ticket section if a Jira ticket was found
@@ -162,7 +188,10 @@ Format the description using this template:
 ${template}
 
 IMPORTANT INSTRUCTIONS:
-${hasChanges ? '- The existing PR description already has a ## Changes section. Add your new changes as bullet points under the existing ## Changes section instead of creating a new one.' : ''}
+- If there is existing content in the Description or Changes sections, understand it and incorporate it into your response.
+- Do not duplicate information that's already present in the existing content.
+- Add new information that complements what's already there.
+${hasChanges ? '- The existing PR description already has a ## Changes section. Add your new changes as bullet points under the existing ## Changes section.' : ''}
 ${hasDescription ? '- Keep the existing ## Description section and enhance it if needed.' : ''}
 ${hasTest ? '- Keep the existing ## Test section and enhance it if needed.' : ''}
 ${hasApi ? '- Keep the existing ## API section and enhance it if needed.' : ''}
@@ -176,7 +205,7 @@ ${!hasApi && !hasApiChanges ? '- Remove the ## API section completely if there a
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful assistant for generating PR descriptions. If the PR already has sections, enhance them instead of creating new ones.'
+          content: 'You are a helpful assistant for generating PR descriptions. If the PR already has sections, enhance them instead of creating new ones. When you see existing content in the Description or Changes sections, carefully analyze and understand it, then incorporate it into your response while adding complementary information.'
         },
         { role: 'user', content: prompt }
       ],
@@ -200,10 +229,18 @@ ${!hasApi && !hasApiChanges ? '- Remove the ## API section completely if there a
       // the existing content based on our instructions to the model
       finalDescription = newPrDescription
     } else if (existingDescription) {
-      // If there's an existing description but no structured sections,
-      // append the new content with a separator
-      const separator = '\n\n---\n\n'
-      finalDescription = `${existingDescription}${separator}${newPrDescription}`
+      // Check if the existing description has any content that doesn't fit into our sections
+      // If it does, we want to preserve it at the top of the PR description
+      const existingSectionsPattern = /##\s+(Description|Changes|Test|API|Ticket)/i
+      if (!existingSectionsPattern.test(existingDescription)) {
+        // If there's an existing description but no structured sections,
+        // prepend it to the new content with a separator
+        const separator = '\n\n---\n\n'
+        finalDescription = `${existingDescription}${separator}${newPrDescription}`
+      } else {
+        // If there are some sections but not all, the model should have incorporated them
+        finalDescription = newPrDescription
+      }
     }
 
     // Update PR description on GitHub
