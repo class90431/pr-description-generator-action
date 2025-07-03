@@ -19686,14 +19686,30 @@ async function generatePRDescription(owner2, repo2, pullNumber2, branchName2) {
     } catch (err) {
       console.warn("Warning: Unable to fetch diff, proceeding without it.");
     }
+    const hasDescription = existingDescription.includes("## Description");
+    const hasChanges = existingDescription.includes("## Changes");
+    const hasTest = existingDescription.includes("## Test");
+    const hasApi = existingDescription.includes("## API");
+    const hasApiChanges = files.some((f2) => {
+      const isApiFile = f2.filename.includes("api") || f2.filename.includes("route") || f2.filename.includes("controller") || f2.filename.includes("endpoint");
+      const containsApiKeywords = diff.includes("app.get(") || diff.includes("app.post(") || diff.includes("app.put(") || diff.includes("app.delete(") || diff.includes("router.get(") || diff.includes("router.post(") || diff.includes("router.put(") || diff.includes("router.delete(") || diff.includes("@api") || diff.includes("fetch(") || diff.includes("axios.");
+      return isApiFile || containsApiKeywords;
+    });
     let template = `
 ## Description
 <!-- Replace this line to describe what this PR does -->
 
 ## Changes
 <!-- Replace this line to list changes -->
+`;
+    if (hasApi || hasApiChanges) {
+      template += `
+## API
+- [GET] XXXXXXX
 
-## Test
+`;
+    }
+    template += `## Test
 <!-- Replace this line to explain how to test -->
 `;
     if (jiraTicket) {
@@ -19702,9 +19718,6 @@ async function generatePRDescription(owner2, repo2, pullNumber2, branchName2) {
 [${jiraTicket}](${jiraURL})
     `;
     }
-    const hasDescription = existingDescription.includes("## Description");
-    const hasChanges = existingDescription.includes("## Changes");
-    const hasTest = existingDescription.includes("## Test");
     const prompt = `
 Generate a GitHub pull request description based on the following details:
 
@@ -19727,6 +19740,9 @@ IMPORTANT INSTRUCTIONS:
 ${hasChanges ? "- The existing PR description already has a ## Changes section. Add your new changes as bullet points under the existing ## Changes section instead of creating a new one." : ""}
 ${hasDescription ? "- Keep the existing ## Description section and enhance it if needed." : ""}
 ${hasTest ? "- Keep the existing ## Test section and enhance it if needed." : ""}
+${hasApi ? "- Keep the existing ## API section and enhance it if needed." : ""}
+${!hasApi && hasApiChanges ? "- Include the ## API section with details about API changes, following the format [METHOD] endpoint." : ""}
+${!hasApi && !hasApiChanges ? "- Remove the ## API section completely if there are no API changes." : ""}
     `;
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -19745,7 +19761,7 @@ ${hasTest ? "- Keep the existing ## Test section and enhance it if needed." : ""
       process.exit(1);
     }
     let finalDescription = newPrDescription;
-    if (existingDescription && (hasDescription || hasChanges || hasTest)) {
+    if (existingDescription && (hasDescription || hasChanges || hasTest || hasApi)) {
       finalDescription = newPrDescription;
     } else if (existingDescription) {
       const separator = "\n\n---\n\n";
