@@ -19690,6 +19690,26 @@ async function generatePRDescription(owner2, repo2, pullNumber2, branchName2) {
     const hasChanges = existingDescription.includes("## Changes");
     const hasTest = existingDescription.includes("## Test");
     const hasApi = existingDescription.includes("## API");
+    let existingDescriptionContent = "";
+    let existingChangesContent = "";
+    let existingTestContent = "";
+    let existingApiContent = "";
+    if (hasDescription) {
+      const descriptionMatch = existingDescription.match(/## Description\s*([\s\S]*?)(?=##|$)/);
+      existingDescriptionContent = descriptionMatch ? descriptionMatch[1].trim() : "";
+    }
+    if (hasChanges) {
+      const changesMatch = existingDescription.match(/## Changes\s*([\s\S]*?)(?=##|$)/);
+      existingChangesContent = changesMatch ? changesMatch[1].trim() : "";
+    }
+    if (hasTest) {
+      const testMatch = existingDescription.match(/## Test\s*([\s\S]*?)(?=##|$)/);
+      existingTestContent = testMatch ? testMatch[1].trim() : "";
+    }
+    if (hasApi) {
+      const apiMatch = existingDescription.match(/## API\s*([\s\S]*?)(?=##|$)/);
+      existingApiContent = apiMatch ? apiMatch[1].trim() : "";
+    }
     const hasApiChanges = files.some((f2) => {
       const isApiFile = f2.filename.includes("api") || f2.filename.includes("route") || f2.filename.includes("controller") || f2.filename.includes("endpoint");
       const containsApiKeywords = diff.includes("app.get(") || diff.includes("app.post(") || diff.includes("app.put(") || diff.includes("app.delete(") || diff.includes("router.get(") || diff.includes("router.post(") || diff.includes("router.put(") || diff.includes("router.delete(") || diff.includes("@api") || diff.includes("fetch(") || diff.includes("axios.");
@@ -19697,20 +19717,20 @@ async function generatePRDescription(owner2, repo2, pullNumber2, branchName2) {
     });
     let template = `
 ## Description
-<!-- Replace this line to describe what this PR does -->
+${existingDescriptionContent || "<!-- Replace this line to describe what this PR does -->"}
 
 ## Changes
-<!-- Replace this line to list changes -->
+${existingChangesContent || "<!-- Replace this line to list changes -->"}
 `;
     if (hasApi || hasApiChanges) {
       template += `
 ## API
-- [GET] XXXXXXX
+${existingApiContent || "- [GET] XXXXXXX"}
 
 `;
     }
     template += `## Test
-<!-- Replace this line to explain how to test -->
+${existingTestContent || "<!-- Replace this line to explain how to test -->"}
 `;
     if (jiraTicket) {
       template += `
@@ -19737,7 +19757,10 @@ Format the description using this template:
 ${template}
 
 IMPORTANT INSTRUCTIONS:
-${hasChanges ? "- The existing PR description already has a ## Changes section. Add your new changes as bullet points under the existing ## Changes section instead of creating a new one." : ""}
+- If there is existing content in the Description or Changes sections, understand it and incorporate it into your response.
+- Do not duplicate information that's already present in the existing content.
+- Add new information that complements what's already there.
+${hasChanges ? "- The existing PR description already has a ## Changes section. Add your new changes as bullet points under the existing ## Changes section." : ""}
 ${hasDescription ? "- Keep the existing ## Description section and enhance it if needed." : ""}
 ${hasTest ? "- Keep the existing ## Test section and enhance it if needed." : ""}
 ${hasApi ? "- Keep the existing ## API section and enhance it if needed." : ""}
@@ -19749,7 +19772,7 @@ ${!hasApi && !hasApiChanges ? "- Remove the ## API section completely if there a
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant for generating PR descriptions. If the PR already has sections, enhance them instead of creating new ones."
+          content: "You are a helpful assistant for generating PR descriptions. If the PR already has sections, enhance them instead of creating new ones. When you see existing content in the Description or Changes sections, carefully analyze and understand it, then incorporate it into your response while adding complementary information."
         },
         { role: "user", content: prompt }
       ],
@@ -19764,8 +19787,13 @@ ${!hasApi && !hasApiChanges ? "- Remove the ## API section completely if there a
     if (existingDescription && (hasDescription || hasChanges || hasTest || hasApi)) {
       finalDescription = newPrDescription;
     } else if (existingDescription) {
-      const separator = "\n\n---\n\n";
-      finalDescription = `${existingDescription}${separator}${newPrDescription}`;
+      const existingSectionsPattern = /##\s+(Description|Changes|Test|API|Ticket)/i;
+      if (!existingSectionsPattern.test(existingDescription)) {
+        const separator = "\n\n---\n\n";
+        finalDescription = `${existingDescription}${separator}${newPrDescription}`;
+      } else {
+        finalDescription = newPrDescription;
+      }
     }
     await octokit.rest.pulls.update({
       owner: owner2,
