@@ -3,12 +3,15 @@ import pluginJs from '@eslint/js'
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
+  { ignores: ['dist/**'] },
   { files: ['**/*.js'], languageOptions: { sourceType: 'commonjs' } },
-  { languageOptions: { globals: globals.browser } },
+  { languageOptions: { globals: { ...globals.node } } },
   pluginJs.configs.recommended,
   {
-    parserOptions: {
-      sourceType: 'module'
+    languageOptions: {
+      parserOptions: {
+        sourceType: 'module'
+      }
     }
   }
 ]
