@@ -19683,7 +19683,7 @@ async function generatePRDescription(owner2, repo2, pullNumber2, branchName2) {
         }
       );
       diff = rawDiff.length > 2e4 ? rawDiff.slice(0, 2e4) + "\n\n[Diff truncated]" : rawDiff;
-    } catch (err) {
+    } catch {
       console.warn("Warning: Unable to fetch diff, proceeding without it.");
     }
     const hasDescription = existingDescription.includes("## Description");
@@ -19695,15 +19695,21 @@ async function generatePRDescription(owner2, repo2, pullNumber2, branchName2) {
     let existingTestContent = "";
     let existingApiContent = "";
     if (hasDescription) {
-      const descriptionMatch = existingDescription.match(/## Description\s*([\s\S]*?)(?=##|$)/);
+      const descriptionMatch = existingDescription.match(
+        /## Description\s*([\s\S]*?)(?=##|$)/
+      );
       existingDescriptionContent = descriptionMatch ? descriptionMatch[1].trim() : "";
     }
     if (hasChanges) {
-      const changesMatch = existingDescription.match(/## Changes\s*([\s\S]*?)(?=##|$)/);
+      const changesMatch = existingDescription.match(
+        /## Changes\s*([\s\S]*?)(?=##|$)/
+      );
       existingChangesContent = changesMatch ? changesMatch[1].trim() : "";
     }
     if (hasTest) {
-      const testMatch = existingDescription.match(/## Test\s*([\s\S]*?)(?=##|$)/);
+      const testMatch = existingDescription.match(
+        /## Test\s*([\s\S]*?)(?=##|$)/
+      );
       existingTestContent = testMatch ? testMatch[1].trim() : "";
     }
     if (hasApi) {
@@ -19768,7 +19774,7 @@ ${!hasApi && hasApiChanges ? "- Include the ## API section with details about AP
 ${!hasApi && !hasApiChanges ? "- Remove the ## API section completely if there are no API changes." : ""}
     `;
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5.3-codex",
       messages: [
         {
           role: "system",
