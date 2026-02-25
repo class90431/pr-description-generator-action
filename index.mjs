@@ -32,7 +32,9 @@ async function generatePRDescription(owner, repo, pullNumber, branchName) {
     // Extract Jira Ticket from branch name
     const jiraTicketMatch = branchName.match(/(CDB|DBP)-\d+/)
     const jiraTicket = jiraTicketMatch ? jiraTicketMatch[0] : null
-    const jiraURL = jiraTicket ? `https://botrista-sw.atlassian.net/browse/${jiraTicket}` : null
+    const jiraURL = jiraTicket
+      ? `https://botrista-sw.atlassian.net/browse/${jiraTicket}`
+      : null
 
     // Fetch PR commits and changed files
     const [{ data: commits }, { data: files }, { data: pr }] =
@@ -77,7 +79,7 @@ async function generatePRDescription(owner, repo, pullNumber, branchName) {
         rawDiff.length > 20000
           ? rawDiff.slice(0, 20000) + '\n\n[Diff truncated]'
           : rawDiff
-    } catch (err) {
+    } catch {
       console.warn('Warning: Unable to fetch diff, proceeding without it.')
     }
 
@@ -86,56 +88,66 @@ async function generatePRDescription(owner, repo, pullNumber, branchName) {
     const hasChanges = existingDescription.includes('## Changes')
     const hasTest = existingDescription.includes('## Test')
     const hasApi = existingDescription.includes('## API')
-    
+
     // Extract existing content from sections if they exist
     let existingDescriptionContent = ''
     let existingChangesContent = ''
     let existingTestContent = ''
     let existingApiContent = ''
-    
+
     if (hasDescription) {
-      const descriptionMatch = existingDescription.match(/## Description\s*([\s\S]*?)(?=##|$)/)
-      existingDescriptionContent = descriptionMatch ? descriptionMatch[1].trim() : ''
+      const descriptionMatch = existingDescription.match(
+        /## Description\s*([\s\S]*?)(?=##|$)/
+      )
+      existingDescriptionContent = descriptionMatch
+        ? descriptionMatch[1].trim()
+        : ''
     }
-    
+
     if (hasChanges) {
-      const changesMatch = existingDescription.match(/## Changes\s*([\s\S]*?)(?=##|$)/)
+      const changesMatch = existingDescription.match(
+        /## Changes\s*([\s\S]*?)(?=##|$)/
+      )
       existingChangesContent = changesMatch ? changesMatch[1].trim() : ''
     }
-    
+
     if (hasTest) {
-      const testMatch = existingDescription.match(/## Test\s*([\s\S]*?)(?=##|$)/)
+      const testMatch = existingDescription.match(
+        /## Test\s*([\s\S]*?)(?=##|$)/
+      )
       existingTestContent = testMatch ? testMatch[1].trim() : ''
     }
-    
+
     if (hasApi) {
       const apiMatch = existingDescription.match(/## API\s*([\s\S]*?)(?=##|$)/)
       existingApiContent = apiMatch ? apiMatch[1].trim() : ''
     }
 
     // Check if API changes are likely present in the code
-    const hasApiChanges = files.some(f => {
+    const hasApiChanges = files.some((f) => {
       // Check if file is likely to contain API definitions
-      const isApiFile = f.filename.includes('api') || 
-                        f.filename.includes('route') || 
-                        f.filename.includes('controller') ||
-                        f.filename.includes('endpoint');
-      
+      const isApiFile =
+        f.filename.includes('api') ||
+        f.filename.includes('route') ||
+        f.filename.includes('controller') ||
+        f.filename.includes('endpoint')
+
       // Check if diff contains API-related keywords
-      const containsApiKeywords = diff.includes('app.get(') || 
-                                 diff.includes('app.post(') || 
-                                 diff.includes('app.put(') || 
-                                 diff.includes('app.delete(') ||
-                                 diff.includes('router.get(') ||
-                                 diff.includes('router.post(') ||
-                                 diff.includes('router.put(') ||
-                                 diff.includes('router.delete(') ||
-                                 diff.includes('@api') ||
-                                 diff.includes('fetch(') ||
-                                 diff.includes('axios.');
-      
-      return isApiFile || containsApiKeywords;
-    });
+      const containsApiKeywords =
+        diff.includes('app.get(') ||
+        diff.includes('app.post(') ||
+        diff.includes('app.put(') ||
+        diff.includes('app.delete(') ||
+        diff.includes('router.get(') ||
+        diff.includes('router.post(') ||
+        diff.includes('router.put(') ||
+        diff.includes('router.delete(') ||
+        diff.includes('@api') ||
+        diff.includes('fetch(') ||
+        diff.includes('axios.')
+
+      return isApiFile || containsApiKeywords
+    })
 
     // Define base template with existing content if available
     let template = `
@@ -144,7 +156,7 @@ ${existingDescriptionContent || '<!-- Replace this line to describe what this PR
 
 ## Changes
 ${existingChangesContent || '<!-- Replace this line to list changes -->'}
-`;
+`
 
     // Add API section if needed
     if (hasApi || hasApiChanges) {
@@ -152,20 +164,20 @@ ${existingChangesContent || '<!-- Replace this line to list changes -->'}
 ## API
 ${existingApiContent || '- [GET] XXXXXXX'}
 
-`;
+`
     }
 
     // Add Test section
     template += `## Test
 ${existingTestContent || '<!-- Replace this line to explain how to test -->'}
-`;
+`
 
     // Only add Ticket section if a Jira ticket was found
     if (jiraTicket) {
       template += `
 ## Ticket
 [${jiraTicket}](${jiraURL})
-    `;
+    `
     }
 
     // Prepare OpenAI prompt
@@ -201,11 +213,12 @@ ${!hasApi && !hasApiChanges ? '- Remove the ## API section completely if there a
 
     // Generate PR description with OpenAI
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-5.3-codex',
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful assistant for generating PR descriptions. If the PR already has sections, enhance them instead of creating new ones. When you see existing content in the Description or Changes sections, carefully analyze and understand it, then incorporate it into your response while adding complementary information.'
+          content:
+            'You are a helpful assistant for generating PR descriptions. If the PR already has sections, enhance them instead of creating new ones. When you see existing content in the Description or Changes sections, carefully analyze and understand it, then incorporate it into your response while adding complementary information.'
         },
         { role: 'user', content: prompt }
       ],
@@ -221,17 +234,21 @@ ${!hasApi && !hasApiChanges ? '- Remove the ## API section completely if there a
 
     // Process the new description
     let finalDescription = newPrDescription
-    
+
     // If there's an existing description and it contains sections,
     // we need to intelligently merge rather than just append
-    if (existingDescription && (hasDescription || hasChanges || hasTest || hasApi)) {
+    if (
+      existingDescription &&
+      (hasDescription || hasChanges || hasTest || hasApi)
+    ) {
       // Use the new description directly as it should have incorporated
       // the existing content based on our instructions to the model
       finalDescription = newPrDescription
     } else if (existingDescription) {
       // Check if the existing description has any content that doesn't fit into our sections
       // If it does, we want to preserve it at the top of the PR description
-      const existingSectionsPattern = /##\s+(Description|Changes|Test|API|Ticket)/i
+      const existingSectionsPattern =
+        /##\s+(Description|Changes|Test|API|Ticket)/i
       if (!existingSectionsPattern.test(existingDescription)) {
         // If there's an existing description but no structured sections,
         // prepend it to the new content with a separator
