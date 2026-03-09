@@ -19774,7 +19774,7 @@ ${!hasApi && hasApiChanges ? "- Include the ## API section with details about AP
 ${!hasApi && !hasApiChanges ? "- Remove the ## API section completely if there are no API changes." : ""}
     `;
     const response = await openai.chat.completions.create({
-      model: "gpt-5.3-codex",
+      model: "gpt-5.4",
       messages: [
         {
           role: "system",

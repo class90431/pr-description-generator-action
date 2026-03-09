@@ -213,7 +213,7 @@ ${!hasApi && !hasApiChanges ? '- Remove the ## API section completely if there a
 
     // Generate PR description with OpenAI
     const response = await openai.chat.completions.create({
-      model: 'gpt-5.3-codex',
+      model: 'gpt-5.4',
       messages: [
         {
           role: 'system',
