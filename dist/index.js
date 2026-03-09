@@ -19782,7 +19782,7 @@ ${!hasApi && !hasApiChanges ? "- Remove the ## API section completely if there a
         },
         { role: "user", content: prompt }
       ],
-      max_tokens: 4096
+      max_completion_tokens: 4096
     });
     const newPrDescription = response.choices[0]?.message?.content?.trim() || "";
     if (!newPrDescription) {
